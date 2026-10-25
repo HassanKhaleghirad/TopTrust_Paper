@@ -1,0 +1,127 @@
+========================================================================
+InTAS official split loader
+========================================================================
+Dataset: /home/h/PycharmProjects/TopTrust/dataset/InTAS_highway_2_constantPositionOffset.zip
+Nested ZIP extraction: disabled
+Split policy: official Train / Validation / Test
+Label field: attacker
+Receiver identity: extracted from source filename when possible
+
+========================================================================
+Split: Train
+========================================================================
+Total records:          37,701
+Benign (attacker=0):    29,870
+Malicious (attacker=1): 7,831
+Missing labels:         0
+Invalid labels:         0
+------------------------------------------------------------------------
+Unique sender IDs:      482
+Unique receiver IDs:    482
+Unique source files:    482
+Missing sender IDs:     0
+Missing receiver IDs:   0
+Missing source files:   0
+Missing rcvTime:        0
+rcvTime minimum:        3601262160543.0
+rcvTime median:         8351033034205.0
+rcvTime maximum:        12599442102538.0
+
+========================================================================
+Split: Validation
+========================================================================
+Total records:          17,977
+Benign (attacker=0):    14,730
+Malicious (attacker=1): 3,247
+Missing labels:         0
+Invalid labels:         0
+------------------------------------------------------------------------
+Unique sender IDs:      152
+Unique receiver IDs:    152
+Unique source files:    152
+Missing sender IDs:     0
+Missing receiver IDs:   0
+Missing source files:   0
+Missing rcvTime:        0
+rcvTime minimum:        12600318553476.0
+rcvTime median:         13518176570928.0
+rcvTime maximum:        14399478663471.0
+
+========================================================================
+Split: Test
+========================================================================
+Total records:          44,259
+Benign (attacker=0):    35,549
+Malicious (attacker=1): 8,710
+Missing labels:         0
+Invalid labels:         0
+------------------------------------------------------------------------
+Unique sender IDs:      476
+Unique receiver IDs:    476
+Unique source files:    476
+Missing sender IDs:     0
+Missing receiver IDs:   0
+Missing source files:   0
+Missing rcvTime:        0
+rcvTime minimum:        7201095409339.0
+rcvTime median:         12189175689777.0
+rcvTime maximum:        14399361310428.0
+
+========================================================================
+Combined dataset summary
+========================================================================
+Total records:          99,937
+Train records:          37,701
+Validation records:     17,977
+Test records:            44,259
+Benign records:         80,149
+Malicious records:      19,788
+Missing labels:         0
+Invalid labels:         0
+
+Official split count checks:
+  Train       : expected=37,701, actual=37,701 [OK]
+  Validation  : expected=17,977, actual=17,977 [OK]
+  Test        : expected=44,259, actual=44,259 [OK]
+[identity audit Train] records=37,701; unique_senders=482; unique_receivers=482; missing_receiver_id=0
+[identity audit Validation] records=17,977; unique_senders=152; unique_receivers=152; missing_receiver_id=0
+[identity audit Test] records=44,259; unique_senders=476; unique_receivers=476; missing_receiver_id=0
+[identity overlap Train vs Validation] senders=2; receivers=2; receiver_examples=['3923', '4079']
+[identity overlap Train vs Test] senders=180; receivers=180; receiver_examples=['2404', '2408', '2422', '2433', '2448']
+[identity overlap Validation vs Test] senders=89; receivers=89; receiver_examples=['3923', '3976', '3987', '4059', '4060']
+[InTAS adapter] feature_mode=edge_rel_kin; features=13; nodes/message=2; client grouping=sender_id; receiver_id retained as metadata (not a feature); bootstrap=OFF
+[InTAS Train] clients=482, messages=37,701, benign=29,870, malicious=7,831
+[InTAS Validation] clients=152, messages=17,977, benign=14,730, malicious=3,247
+[InTAS Test] clients=476, messages=44,259, benign=35,549, malicious=8,710
+[official InTAS split; no records moved] clients used train/val/test: 482/152/476
+[InTAS] Bootstrap is disabled: receiver IDs are metadata only; graph is still per-message.
+[DP baseline] adjacency=add/remove one client; q=0.1037; sigma=3.5441; C=1.0000; target eps=1.0; delta=1e-05
+round  10  val F1=0.000 MCC=0.000 AUC=0.418 AP=0.148 lambda=0.100 eps=0.421  |clipped upd|=0.572 |server-noise|=2.506
+round  20  val F1=0.000 MCC=0.000 AUC=0.406 AP=0.143 lambda=0.100 eps=0.581  |clipped upd|=0.389 |server-noise|=2.581
+round  30  val F1=0.000 MCC=0.000 AUC=0.564 AP=0.270 lambda=0.101 eps=0.707  |clipped upd|=0.399 |server-noise|=2.621
+round  40  val F1=0.000 MCC=0.000 AUC=0.552 AP=0.238 lambda=0.102 eps=0.816  |clipped upd|=0.342 |server-noise|=2.495
+round  50  val F1=0.000 MCC=0.000 AUC=0.597 AP=0.287 lambda=0.101 eps=0.912  |clipped upd|=0.397 |server-noise|=2.544
+round  60  val F1=0.000 MCC=0.000 AUC=0.657 AP=0.424 lambda=0.101 eps=1.000  |clipped upd|=0.266 |server-noise|=2.503
+
+============================================================================
+Score distribution: Validation
+============================================================================
+Benign: n=14,730 | min=0.00014837 | max=0.13918315 | mean=0.01819709 | std=0.01285470
+  P1=0.00107074 P10=0.00484892 P25=0.00927218 P50=0.01554102 P75=0.02423966 P90=0.03399488 P99=0.06373754
+  Below thresholds: 0.01=28.06% 0.02=64.35% 0.05=97.45% 0.1=99.93% 0.5=100.00%
+Malicious: n=3,247 | min=0.00031501 | max=0.32998079 | mean=0.03377715 | std=0.03047345
+  P1=0.00130700 P10=0.00596581 P25=0.01258144 P50=0.02441608 P75=0.04744275 P90=0.07411521 P99=0.14102710
+  Below thresholds: 0.01=18.63% 0.02=42.01% 0.05=76.75% 0.1=96.74% 0.5=100.00%
+
+============================================================================
+Score distribution: Test
+============================================================================
+Benign: n=35,549 | min=0.00009713 | max=0.12783760 | mean=0.01949566 | std=0.01342441
+  P1=0.00079872 P10=0.00517249 P25=0.00995570 P50=0.01693957 P75=0.02595845 P90=0.03714342 P99=0.06314811
+  Below thresholds: 0.01=25.17% 0.02=60.59% 0.05=96.48% 0.1=99.98% 0.5=100.00%
+Malicious: n=8,710 | min=0.00020486 | max=0.20463493 | mean=0.02668985 | std=0.02114723
+  P1=0.00112032 P10=0.00611891 P25=0.01227106 P50=0.02215286 P75=0.03509075 P90=0.05126190 P99=0.10953730
+  Below thresholds: 0.01=19.14% 0.02=45.61% 0.05=89.16% 0.1=98.59% 0.5=100.00%
+VALIDATION (threshold selected here): {'f1': 0.4087, 'precision': 0.4633, 'recall': 0.3656, 'mcc': 0.2996, 'auc': 0.6569, 'pr_auc': 0.4238, 'tp': 1187, 'fp': 1375, 'tn': 13355, 'fn': 2060, 'threshold': 0.0346}
+[threshold] selected on Validation only: 0.034562
+TEST (official InTAS split; message-level): {'f1': 0.2935, 'precision': 0.3389, 'recall': 0.2588, 'mcc': 0.1503, 'auc': 0.5988, 'pr_auc': 0.3093, 'tp': 2254, 'fp': 4396, 'tn': 31153, 'fn': 6456, 'threshold': 0.0346} | eps spent = 1.00
