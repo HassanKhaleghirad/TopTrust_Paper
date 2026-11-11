@@ -1,0 +1,33 @@
+نحوه‌ی استفاده
+گام ۱: ذخیره‌ی لاگ اجرا
+
+پس از اجرای مدل، لاگ را ذخیره کنید:
+bash
+
+python Edited_toptrust_version4.py \
+  --intas --mode uniform --epsilon 8 --rounds 150 \
+  --lr 0.15 --cmax 1.0 --intas_features edge_rel_kin \
+  --seed 42 --report_test --report_unseen_test \
+  2>&1 | tee train_log.txt
+
+گام ۲: اجرای اسکریپت تولید شکل
+bash
+cd figures
+python make_figures.py \
+  --npz uniform_dp_predictions_eps8.0_seed42_rounds150_cmax1.0_edge_rel_kin.npz \
+  --log train_log.txt \
+  --out figs/ \
+  --threshold 0.1926
+
+گام ۳: نتایج
+
+فایل‌های تولیدشده در figs/:
+فایل	محتوا	جایگزین کدام شکل مقاله
+fig2_score_distribution.pdf	هیستوگرام توزیع score	شکل جدید (اضافه به مقاله)
+fig3_pr_roc_curves.pdf	ROC و PR	شکل جدید
+fig4_confusion_matrices.pdf	ماتریس درهم‌ریختگی	شکل جدید
+fig5_convergence.pdf	(a) منحنی همگرایی (b) مصرف ε	fig:convergence
+fig6_per_sender_mcc.pdf	توزیع MCC per-sender	شکل جدید (تحلیل خطا)
+fig7_threshold_sweep.pdf	منحنی F1/MCC/Precision/Recall vs threshold	شکل جدید
+fig8_epsilon_budget.pdf	ε بر حسب round	شکل جدید (بخشی از fig:privacy_utility)
+fig_summary.csv	جدول خلاصه‌ی معیارها	برای cross-check جدول اصلی
