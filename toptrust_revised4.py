@@ -244,9 +244,48 @@ def hierarchical_sum(updates, rsu_ids, n_rsu, reference):
             out += torch.stack(members, dim=0).sum(dim=0)
     return out
 
+def secure_gaussian_tensor(shape, dtype, device):
+    """
+    Generate Gaussian samples using OS-backed cryptographic randomness.
 
+    Uses Box-Muller transformation on 53-bit uniform variates.
+    This is a finite-precision numerical Gaussian sampler.
+    """
+    n = math.prod(shape)
+    if n == 0:
+        return torch.empty(shape, dtype=dtype, device=device)
+
+    pairs = (n + 1) // 2
+    mask = (1 << 53) - 1
+
+    raw1 = secrets.token_bytes(pairs * 8)
+    raw2 = secrets.token_bytes(pairs * 8)
+
+    bits1 = np.frombuffer(raw1, dtype=np.uint64)
+    bits2 = np.frombuffer(raw2, dtype=np.uint64)
+
+    u1 = ((bits1 >> 11).astype(np.float64) + 0.5) / (1 << 53)
+    u2 = ((bits2 >> 11).astype(np.float64) + 0.5) / (1 << 53)
+
+    radius = np.sqrt(-2.0 * np.log(u1))
+    angle = 2.0 * math.pi * u2
+
+    z0 = radius * np.cos(angle)
+    z1 = radius * np.sin(angle)
+
+    samples = np.empty(pairs * 2, dtype=np.float64)
+    samples[0::2] = z0
+    samples[1::2] = z1
+
+    samples = samples[:n].reshape(shape).copy()
+
+    return torch.as_tensor(
+        samples,
+        dtype=dtype,
+        device=device
+    )
 def central_dp_aggregate(updates, rsu_ids, n_rsu, reference, clip_norm, noise_multiplier,
-                         fixed_denominator, generator):
+                         fixed_denominator, generator, secure_noise=False):
     """Client-level add/remove DP aggregate for one Poisson-sampled round.
 
     Each client's contribution is clipped to C; the server sums contributions, adds one
@@ -259,13 +298,23 @@ def central_dp_aggregate(updates, rsu_ids, n_rsu, reference, clip_norm, noise_mu
     clipped = [clip_update(u, clip_norm) for u in updates]
     signal_sum = hierarchical_sum(clipped, rsu_ids, n_rsu, reference)
     if noise_multiplier > 0:
-        noise_sum = torch.randn(signal_sum.shape, generator=generator, dtype=signal_sum.dtype,
-                                device=signal_sum.device) * (noise_multiplier * clip_norm)
+        if secure_noise:
+            noise_sum = secure_gaussian_tensor(
+                signal_sum.shape,
+                signal_sum.dtype,
+                signal_sum.device
+            )
+        else:
+            noise_sum = torch.randn(
+                signal_sum.shape,
+                generator=generator,
+                dtype=signal_sum.dtype,
+                device=signal_sum.device
+            )
+
+        noise_sum = noise_sum * (noise_multiplier * clip_norm)
     else:
         noise_sum = torch.zeros_like(signal_sum)
-    result = (signal_sum + noise_sum) / fixed_denominator
-    noise_norm = float(noise_sum.norm()) / fixed_denominator
-    return result, noise_norm
 
 
 # ----------------------------------------------------------------------------------------------
@@ -592,6 +641,16 @@ def train(cfg: FedConfig, train_c, val_c, verbose=True):
             acct.step([dp.sigma])
 
         if dp.mode == "uniform":
+            cutoff = int(q * (1 << 64))
+            selected = [
+                i for i in range(N)
+                if secrets.randbits(64) < cutoff
+            ]
+        else:
+            selected = [
+                i for i in range(N)
+                if rng.random() < q
+            ]
             # Uniform-DP path: local deltas are clipped locally, but noise is added ONCE to the
             # global sum. No data-size weights; denominator is fixed q*N, not len(selected).
             raw_updates, rsus, raw_norms = [], [], []
@@ -1090,6 +1149,43 @@ def main():
     report_score_distribution("Validation", val_logits, val_y)
     if report_test:
         test_logits, test_y = predict_logits(model, te, boot, cfg)
+
+        # Save raw Test predictions for independent evaluation.
+        # This does not change training, model parameters, or threshold selection.
+        if is_intas and a.mode == "uniform":
+            test_prob_np = (
+                torch.sigmoid(
+                    torch.as_tensor(test_logits).detach().reshape(-1).float()
+                )
+                .cpu()
+                .numpy()
+            )
+
+            test_y_np = (
+                torch.as_tensor(test_y)
+                .detach()
+                .reshape(-1)
+                .cpu()
+                .numpy()
+            )
+
+            np.savez_compressed(
+                "uniform_dp_predictions.npz",
+                y_test=test_y_np.astype(np.int64),
+                test_prob=test_prob_np.astype(np.float32),
+                seed=np.asarray(a.seed),
+                epsilon=np.asarray(a.epsilon),
+                rounds=np.asarray(a.rounds),
+                cmax=np.asarray(a.cmax),
+            )
+
+            print(
+                "[NPZ saved] uniform_dp_predictions.npz",
+                f"| samples={len(test_y_np)}",
+                f"| seed={a.seed}",
+                f"| epsilon={a.epsilon}",
+            )
+
         report_score_distribution("Test", test_logits, test_y)
 
     # Select the decision threshold on Validation only. Test is not used for model selection.

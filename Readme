@@ -1,61 +1,600 @@
-# 1) فقط ورودی: همان ۱۴ ورودی قبلی، متمرکز (خط پایهٔ TopTrust فعلی)
-python toptrust_revised4.py --intas --mode none --epsilon inf --centralized_epochs 30 --intas_features gnn7
+# فایل کامل README.md
 
-# 2) ورودی اصلی، متمرکز
-python toptrust_revised4.py --intas --mode none --epsilon inf --centralized_epochs 30 --intas_features edge_rel_kin
+در ادامه، محتوای کامل فایل `README.md` به‌صورت یکجا آمده است. کل بلوک زیر را کپی کنید و در فایل `README.md` در ریشه‌ی مخزن ذخیره کنید.
 
-# 3) ablation با مختصات
-python toptrust_revised4.py --intas --mode none --epsilon inf --centralized_epochs 30 --intas_features gnn7_edge
+```markdown
+# TOPTrust: Topology-Aware Differentially Private Federated Learning for Misbehavior Detection in VANETs
 
-# 4) فدرال بدون DP (فقط اگر پلهٔ ۲ خوب شد)
-python toptrust_revised4.py --intas --mode none --epsilon inf --rounds 60 --intas_features edge_rel_kin
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
+[![PyTorch](https://img.shields.io/badge/PyTorch-2.x-red.svg)](https://pytorch.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
+A reference implementation of **TOPTrust**, a federated learning framework with
+**client-level differential privacy (DP)** for detecting misbehaving vehicles in
+Vehicular Ad-Hoc Networks (VANETs). The method combines:
 
-لطفاً قبل از هر نتیجه‌گیری، یک محاسبهٔ سریع برای DP انجام می‌دهم تا بدانیم نویز در این تنظیم چقدر بزرگ است، چون دقیقاً همین تعیین می‌کند اجرای بعدی چه باید باشد.
+- A **temporal graph neural network** with a learnable global time-decay coefficient.
+- **Topology-aware clipping** for heterogeneous vehicle degrees.
+- **Hierarchical aggregation** (vehicle -> RSU -> TA).
+- **RDP accounting** for the Poisson-subsampled Gaussian mechanism.
+- A **bootstrap** module for cold-start vehicles.
 
-## نتیجهٔ جاروب `lr` (متمرکز، `edge_rel_kin`، Validation)
+> **Privacy scope.** Finite-epsilon guarantees are certified **only** for the `uniform`
+> clipping mode under client-level add/remove-one adjacency, a fixed public client
+> universe, Poisson sampling, and a single server-side Gaussian perturbation. Other
+> clipping modes (`topology`, `privatized`) are provided for **non-private ablations**
+> and must be run with `--epsilon inf`.
 
-| `lr` | AUC نهایی | AP نهایی | بهترین AUC در طول آموزش |
-|---|---|---|---|
-| 0.05 | 0.929 | 0.900 | 0.930 |
-| 0.10 | 0.934 | 0.903 | 0.936 |
-| 0.20 (اجرای قبلی) | 0.919 | 0.886 | 0.932 |
+> **Data scope.** The repository ships with a synthetic generator. The InTAS adapter
+> uses the official Train/Validation/Test split shipped with the dataset. VeReMi is
+> optional and loaded from a user-supplied directory.
 
-`lr` تقریباً بی‌اثر است و اختلاف‌ها در حد نوسان‌اند. `lr=0.1` را برمی‌دارم، چون هم بهترین است و هم در پایان آموزش پایدارتر از `0.2`. سقف مدل با این ورودی حدود ۰٫۹۳ تا ۰٫۹۳۵ است. HistGB با همان ویژگی‌ها ۰٫۹۴۹ داشت، پس فاصله کوچک است (حدود ۰٫۰۱۵) و دلیلی برای بزرگ‌کردن مدل نیست.
+---
 
-**نوسان F1 در epoch 15 و 30:** در هر سه `lr` دقیقاً در همین epochها افت می‌کند (به ۰٫۷۳ تا ۰٫۷۵) و AUC تکان نمی‌خورد، پس مشکل رتبه‌بندی نیست و فقط آستانهٔ ۰٫۵ جابه‌جا می‌شود. حدس من این است که چون ۳۷٬۷۰۱ بر ۶۴ بخش‌پذیر نیست، آخرین دسته در هر epoch فقط ۵ نمونه دارد و چون seed ثابت است، ترکیب آن در همهٔ اجراها یکی است. این حدس را آزموده‌ام نه تأیید کرده‌ام. چون آستانهٔ نهایی روی Validation انتخاب می‌شود (F1 برابر ۰٫۸۸۵ با آستانهٔ حدود ۰٫۹۳)، به نتیجهٔ نهایی آسیبی نمی‌زند. برای قضاوت فقط به AUC و AP نگاه کنید، نه F1 میانی.
+## Table of Contents
 
-**سقف بازخوانی:** حدود ۸۰٪ است با دقت ۰٫۹۸۶. حدود ۱۶٪ پیام‌های مخرب امتیاز زیر ۰٫۵ می‌گیرند. همان نسبتی است که قبلاً برای `distance_to_road_edge` مثبت در مخرب‌ها دیدیم. با اطلاعات یک پیام بیشتر نمی‌شود رفت. برای بهبود باید تاریخچهٔ هر فرستنده وارد شود، که تغییر معماری است و بعد از DP به آن برمی‌گردیم.
+1. [Repository structure](#1-repository-structure)
+2. [Installation](#2-installation)
+3. [Datasets](#3-datasets)
+4. [Quick start](#4-quick-start)
+5. [Full uniform-DP run](#5-full-uniform-dp-run)
+6. [Command-line reference](#6-command-line-reference)
+7. [Interpreting the output](#7-interpreting-the-output)
+8. [NPZ prediction files](#8-npz-prediction-files)
+9. [Privacy accounting details](#9-privacy-accounting-details)
+10. [Reproducibility notes](#10-reproducibility-notes)
+11. [Ablations and recommended experiments](#11-ablations-and-recommended-experiments)
+12. [Troubleshooting](#12-troubleshooting)
+13. [Citation](#13-citation)
+14. [License](#14-license)
 
-## چرا DP باید با دقت اجرا شود
+---
 
-با خود accountant فایل، برای ۶۰ دور، `q = 50/482` و `C = 3`، ضریب نویز σ و اندازهٔ تقریبی نویز سرور (حدود ۱٬۳۰۰ پارامتر) این است:
+## 1. Repository structure
 
-| ε | σ | نرم تقریبی نویز در هر دور |
+```
+TopTrust/
+|-- Edited_toptrust_version4.py     # main entry point (model, DP, training)
+|-- spliteDataset.py                # official InTAS split loader (user-supplied)
+|-- veremi_loader.py                # optional VeReMi Extension loader
+|-- dataset/                        # put datasets here (not committed)
+|   |-- InTAS_highway_2_constantPositionOffset.zip
+|   |-- VeReMi_Extension/
+|-- README.md
+|-- LICENSE
+```
+
+The repository is a **single-file** implementation for portability. Only one
+file is required to run the synthetic baseline: `Edited_toptrust_version4.py`.
+For InTAS you additionally need `spliteDataset.py`. For VeReMi you need
+`veremi_loader.py`.
+
+---
+
+## 2. Installation
+
+### Requirements
+
+- Python **3.10+**
+- PyTorch **2.x** (CPU is sufficient)
+- NumPy
+- No PyTorch Geometric, no Flower.
+
+### Setup
+
+```bash
+git clone https://github.com/<your-org>/TopTrust.git
+cd TopTrust
+
+python -m venv .venv
+source .venv/bin/activate        # Linux/macOS
+# .venv\Scripts\activate         # Windows
+
+pip install --upgrade pip
+pip install torch numpy
+```
+
+### Sanity check
+
+```bash
+python Edited_toptrust_version4.py --selftest
+```
+
+Expected last line:
+
+```
+selftest OK  (sigma for eps=1, q=0.05, R=78: ...)
+```
+
+The self-test verifies:
+- Clipping radius monotonicity, cold-start floor, and uniformity.
+- Hierarchical aggregation equals flat weighted averaging.
+- RDP accountant monotonicity and sigma calibration.
+- Central DP aggregation clips every contribution and adds a single noise vector.
+- The secure Gaussian sampler scales noise by `(sigma*C)` correctly.
+
+---
+
+## 3. Datasets
+
+### 3.1 Synthetic data (default)
+
+If you do not pass `--intas` or `--data_dir`, the script generates synthetic
+**position-offset attack** ego-graphs with:
+
+- Heterogeneous vehicle degrees (heavy-tailed negative binomial).
+- Malicious egos whose position residuals are shifted by a constant offset.
+- Older observations (larger `dt`) are noisier, so a learnable decay is useful.
+
+This is only for **smoke tests and ablations**, not for reporting results.
+
+```bash
+python Edited_toptrust_version4.py --rounds 30
+```
+
+### 3.2 InTAS
+
+The **InTAS** (Intelligent Traffic and Attack Simulation) dataset provides
+beacon-level misbehavior labels for a highway scenario with a *constant position
+offset* attack.
+
+**Format expected by this repository**
+
+- A zip file at `dataset/InTAS_highway_2_constantPositionOffset.zip`
+- Records must contain at least:
+  - `sender_id`, `receiver_id`
+  - `attacker` (0 = benign, 1 = malicious)
+  - `sender`, `receiver` objects with `pos` (comma-separated x,y,z),
+    `spd`, `acl`, `hed`, and `distance_to_road_edge`
+  - `sendTime`, `rcvTime`
+
+**Splits.** The repository **never re-splits** InTAS. It uses the official
+Train / Validation / Test split provided by the dataset:
+
+| Split      | Records  | Unique senders |
+|------------|----------|----------------|
+| Train      | 37,701   | 482            |
+| Validation | 17,977   | 152            |
+| Test       | 44,259   | 476            |
+
+**Note on identity overlap.** The official Test split shares **180 sender IDs**
+with Train and **89** with Validation. The code reports this overlap in
+`audit_intas_splits(...)` but **never moves records**. See Section 11 for the
+`--report_unseen_test` ablation that quantifies the effect.
+
+**Adapter behaviour.**
+
+- Each message becomes a **2-node graph**: node 0 = sender/ego, node 1 = receiver.
+- `receiver_id` is kept as **metadata**, never as a feature.
+- `T` stores a **per-message send-to-receive delay proxy**, not a persistent
+  pairwise age.
+- Feature normalization statistics are computed **only on Train**.
+- Bootstrap is disabled for InTAS.
+
+**Feature modes** (`--intas_features`):
+
+| Mode           | Features per role | Contains absolute coordinates? |
+|----------------|-------------------|--------------------------------|
+| `gnn7`         | 7 (x, y, z, speed, accel, sin/cos heading) | Yes |
+| `gnn7_edge`    | 8 (+ `distance_to_road_edge` for sender)   | Yes |
+| `edge_rel_kin` | 13 (relative kinematics + road edge)       | Partially (sender's road-edge) |
+
+`distance_to_road_edge` must be confirmed against the dataset documentation
+before reporting results that use it.
+
+### 3.3 VeReMi Extension (optional)
+
+Use `--data_dir /path/to/VeReMi_Extension`. The loader `veremi_loader.py` must
+provide:
+
+```python
+from veremi_loader import load_veremi_dir, split_by_sender, MOB_IDX
+```
+
+Two split policies are available:
+
+- `--split sender` (default): vehicles are disjoint across Train/Val/Test.
+- `--split receiver`: file-level split (each receiver contributes to exactly one split).
+
+---
+
+## 4. Quick start
+
+### 4.1 Self-test
+
+```bash
+python Edited_toptrust_version4.py --selftest
+```
+
+### 4.2 Synthetic, non-private
+
+```bash
+python Edited_toptrust_version4.py --mode none --epsilon inf --rounds 30
+```
+
+### 4.3 InTAS smoke test (2 rounds, non-private)
+
+```bash
+python Edited_toptrust_version4.py --intas --smoke_test
+```
+
+This runs a deliberately tiny configuration (2 rounds, 8 clients, hidden=8,
+layers=1) to verify shapes and the training loop. **Do not report these metrics.**
+
+### 4.4 InTAS, centralized (ladder step 1)
+
+```bash
+python Edited_toptrust_version4.py \
+  --intas \
+  --mode none \
+  --epsilon inf \
+  --centralized_epochs 20 \
+  --intas_features edge_rel_kin
+```
+
+This trains the same GNN on the pooled Train split, **without federation or DP**.
+It tells you whether the model/input can learn the task at all before adding
+DP noise.
+
+---
+
+## 5. Full uniform-DP run
+
+This is the command used to produce the reported results:
+
+```bash
+python Edited_toptrust_version4.py \
+  --intas \
+  --mode uniform \
+  --epsilon 8 \
+  --rounds 150 \
+  --lr 0.15 \
+  --cmax 1.0 \
+  --intas_features edge_rel_kin \
+  --seed 42 \
+  --report_test \
+  --report_unseen_test
+```
+
+**Expected runtime.** On a CPU-only machine, roughly 25-40 minutes for 150 rounds
+with 482 clients.
+
+**What you should see (reference run):**
+
+```
+[DP baseline] adjacency=add/remove one client; q=0.103734; sigma=1.140526; C=1.0000;
+              target eps=8.0; delta=1e-05
+round  60  val F1=0.462 ... AUC=0.890 AP=0.809 ...
+round 120  val F1=0.770 ... AUC=0.908 AP=0.858 ...
+round 150  val F1=0.765 ... AUC=0.910 AP=0.860 ... eps=8.000
+
+VALIDATION:  F1=0.8117  MCC=0.7892  AUC=0.9096  PR-AUC=0.8599
+TEST       : F1=0.7138  MCC=0.6927  AUC=0.8206  PR-AUC=0.7589  (eps=8.00)
+TEST (unseen senders only; ablation):
+              F1=0.7054  MCC=0.6864  AUC=0.8181  PR-AUC=0.7573
+```
+
+The small drop on Test vs. Validation is driven by the identity overlap; the
+unseen-only ablation shows that the model generalizes to unseen vehicles
+(Delta MCC = -0.006).
+
+---
+
+## 6. Command-line reference
+
+### Data and splits
+
+| Flag | Default | Meaning |
 |---|---|---|
-| 16 | 0.65 | 1.4 |
-| 8 | 0.90 | 2.0 |
-| 4 | 1.31 | 2.8 |
-| 2 | 2.07 | 4.5 |
-| 1 | 3.54 | 7.7 |
+| `--intas` | off | Use the official InTAS split |
+| `--data_dir PATH` | - | Use a VeReMi Extension directory |
+| `--split {sender,receiver}` | `sender` | VeReMi split policy |
+| `--max_files N` | - | VeReMi: cap number of receiver files |
+| `--max_samples N` | 500 | VeReMi: ego graphs per receiver file |
+| `--stride N` | 0 (auto) | VeReMi: use every n-th beacon |
+| `--min_samples N` | 8 | VeReMi: drop receiver files with fewer graphs |
+| `--intas_features {gnn7,gnn7_edge,edge_rel_kin}` | `gnn7` | InTAS feature mode |
+| `--max_clients_per_split N` | - | Per-split client cap (smoke tests only) |
+| `--max_samples_per_client N` | - | Per-sender message cap |
 
-نرم هر به‌روزرسانی میانگین‌گیری‌شده حداکثر حدود ۳ است (وقتی همهٔ کلاینت‌ها هم‌جهت باشند)، و عملاً کمتر. پس تا ε برابر ۴ نویز از سیگنال کوچک‌تر یا هم‌اندازه است و آموزش احتمالاً جواب می‌دهد، ولی برای ε برابر ۲ و ۱ نویز در هر دور بزرگ‌تر از سیگنال است. این برآورد تقریبی است. اجرای واقعی `|clipped upd|` و `|server-noise|` را چاپ می‌کند. اگر `|clipped upd|` مثلاً حدود ۰٫۵ باشد، باید `--cmax` را کاهش داد، چون نویز با `C` خطی کم می‌شود و ما از بخش بزرگی از بودجهٔ برش استفاده نمی‌کنیم.
+### Model
 
-## اجراها
+| Flag | Default | Meaning |
+|---|---|---|
+| `--hidden N` | 16 | Hidden width (paper: 64; small models suit DP) |
+| `--layers N` | 2 | Number of message-passing layers (paper: 3) |
+| `--lr F` | 0.2 | Local SGD learning rate |
+| `--local_epochs N` | 5 | Local epochs per round |
+| `--pos_weight F` | 2.0 | BCE positive-class weight (fixed hyper-parameter) |
+| `--server_lr F` | auto | Server LR (1.0 without DP, 0.25 with DP) |
 
-دو اجرای باقی‌مانده از نردبان و DP، به‌ترتیب:
+### DP mechanism
+
+| Flag | Default | Meaning |
+|---|---|---|
+| `--mode {topology,uniform,privatized,none}` | `topology` | Clipping mode (only `uniform` is certified) |
+| `--epsilon F` | `inf` | Target epsilon (finite only for `uniform`) |
+| `--delta F` | 1e-5 | Target delta |
+| `--cmax F` | 3.0 | Maximum clipping radius |
+| `--alpha F` | 1.0 | Topology clipping alpha (unused in `uniform`) |
+| `--tau_min N` | 3 | Cold-start degree threshold (unused in `uniform`) |
+| `--rounds N` | 60 | Federated rounds |
+
+### Training and reporting
+
+| Flag | Default | Meaning |
+|---|---|---|
+| `--seed N` | 42 | Local-training seed (does **not** control DP randomness) |
+| `--centralized_epochs N` | 0 | Ladder step 1: centralized training |
+| `--central_bs N` | 64 | Centralized batch size |
+| `--report_test` | off | Evaluate the official Test split |
+| `--report_unseen_test` | off | Additional ablation on Test senders unseen in Train |
+| `--smoke_test` | off | Tiny InTAS integration test |
+| `--selftest` | off | Run unit checks |
+
+---
+
+## 7. Interpreting the output
+
+### Per-round log
 
 ```
-# 1) فدرال بدون DP، پایهٔ مقایسهٔ DP
-python toptrust_revised4.py --intas --mode none --epsilon inf --rounds 60 --lr 0.1 --intas_features edge_rel_kin
-
-# 2) کنترل ورودی قبلی، متمرکز (برای جدول ablation)
-python toptrust_revised4.py --intas --mode none --epsilon inf --centralized_epochs 30 --lr 0.1 --intas_features gnn7
-
-# 3) DP، به‌ترتیب ε = 8، 4، 2
-python toptrust_revised4.py --intas --mode uniform --epsilon 8 --rounds 60 --lr 0.1 --intas_features edge_rel_kin
-python toptrust_revised4.py --intas --mode uniform --epsilon 4 --rounds 60 --lr 0.1 --intas_features edge_rel_kin
-python toptrust_revised4.py --intas --mode uniform --epsilon 2 --rounds 60 --lr 0.1 --intas_features edge_rel_kin
+round  60  val F1=0.462 MCC=0.510 AUC=0.890 AP=0.809 lambda=0.100 eps=5.134
+           |clipped upd|=0.359 |server-noise|=39.990
 ```
 
-برای هر اجرا خطوط `round ... AUC ... AP ...` و خط `VALIDATION` را بفرستید. در اجرای DP به `|clipped upd|` و `|server-noise|` هم نگاه می‌کنم. `--report_test` همچنان زده نشود.
+| Field | Meaning |
+|---|---|
+| `F1`, `MCC`, `AUC`, `AP` | Validation metrics (threshold = 0.5 during training) |
+| `lambda` | Current learnable time-decay coefficient |
+| `eps` | Consumed epsilon so far (RDP accountant) |
+| `|clipped upd|` | Mean L2 norm of clipped client updates (<= `C`) |
+| `|server-noise|` | L2 norm of the Gaussian noise vector added to the sum |
+
+**A high `|server-noise| / |clipped upd|` ratio is expected.** In our reference
+run it is ~130x; learning still succeeds because signal is coherent across rounds.
+
+### Final block
+
+1. `Score distribution: Validation` - per-class quantiles and threshold sweep.
+2. `[NPZ saved] <file>.npz` - raw predictions + metadata (see Section 8).
+3. `Score distribution: Test` - same diagnostics for Test.
+4. `VALIDATION` - metrics at the F1-optimal threshold chosen **on Validation**.
+5. `TEST` - metrics at the same fixed threshold. **Never used for selection.**
+6. `TEST (unseen senders only; ablation)` - Test restricted to senders that
+   never appear in Train.
+
+---
+
+## 8. NPZ prediction files
+
+For `--intas --mode uniform`, predictions are saved to:
+
+```
+uniform_dp_predictions_eps{E}_seed{S}_rounds{R}_cmax{C}_{features}.npz
+```
+
+Contents:
+
+| Key | Shape | Meaning |
+|---|---|---|
+| `y_test` | `(N,)` | Ground-truth labels |
+| `test_prob` | `(N,)` | Predicted probability of "malicious" |
+| `sender_id` | `(N,)` | Sender ID for each message |
+| `receiver_id` | `(N,)` | Receiver ID for each message |
+| `train_sender_ids` | `(K,)` | Unique sender IDs seen in Train |
+| `seed`, `epsilon`, `rounds`, `cmax` | scalar | Run configuration |
+| `intas_features` | scalar | Feature mode |
+
+These files let you re-evaluate thresholds, compute per-sender metrics, and run
+ablations **without retraining**. `test_prob` is a DP output; publishing it with
+`sender_id` (public metadata) does not weaken the DP guarantee.
+
+Example:
+
+```python
+import numpy as np
+d = np.load("uniform_dp_predictions_eps8.0_seed42_rounds150_cmax1.0_edge_rel_kin.npz")
+print(d["y_test"].shape, d["test_prob"].shape, len(d["train_sender_ids"]))
+```
+
+---
+
+## 9. Privacy accounting details
+
+### Mechanism
+
+For each round:
+
+1. Clients are sampled independently with probability `q = clients_per_round / N`.
+2. Each selected client trains locally for `E` epochs and returns `DeltaW_i`.
+3. The server L2-clips each `DeltaW_i` to `C` (`C = cmax` in `uniform` mode).
+4. Contributions are summed through RSUs and TA (`hierarchical_sum`).
+5. **One** Gaussian vector `N(0, (sigma*C)^2 I)` is added to the sum.
+6. The sum is divided by the **fixed public denominator** `q*N` (not the realized
+   selected count).
+
+### Accountant
+
+The RDP accountant (`RDPAccountant`) implements the **exact integer-order RDP**
+for the Poisson-subsampled Gaussian mechanism:
+
+    RDP_alpha = 1/(alpha-1) * log( sum_{k=0}^{alpha} C(alpha,k) (1-q)^(alpha-k) q^k
+                                    * exp( (k^2-k) / (2 sigma^2) ) )
+
+with integer orders `alpha in {2, ..., 256}`. The RDP -> (epsilon, delta)
+conversion uses the Balle et al. improved bound.
+
+### Sigma calibration
+
+`calibrate_sigma(target_eps, q, rounds, delta)` uses binary search over `sigma`
+with the same accountant that is used during training, so the reported epsilon
+is the one actually spent.
+
+### What is **not** certified
+
+- `--mode topology` and `--mode privatized`: the topology-dependent sensitivity
+  is not handled by this client-level accountant. **Finite-epsilon runs are blocked.**
+- Size-weighted aggregation with per-client noise: not implemented.
+- Edge-level DP: not implemented.
+
+### Randomness
+
+- **Client sampling** (uniform mode): `secrets.randbits(64) < int(q * 2**64)`.
+- **Server Gaussian**: `secure_gaussian_tensor` draws 53-bit uniforms from
+  `secrets.token_bytes` and applies Box-Muller.
+- **Local training**: seeded from `--seed` for reproducibility.
+
+Consequence: two runs with the same `--seed` will **not** produce identical
+noise. For paper results, run multiple seeds (e.g., 5) and report mean +/- std.
+
+**Numerical caveat.** The sampler is a 53-bit Box-Muller, which is a finite-
+precision approximation to the ideal Gaussian. The deviation is O(2^-53) and is
+treated as negligible in the epsilon claim; a sample-and-discard refinement is
+left for future work.
+
+---
+
+## 10. Reproducibility notes
+
+- **Model selection.** The decision threshold is chosen **only on Validation**.
+  Test is never used for model or threshold selection.
+- **Hyper-parameters.** `--rounds`, `--lr`, `--cmax` should be selected on
+  Validation, not Test. Do not tune on Test and then report Test metrics.
+- **Multiple seeds.** Because DP noise is not seedable, report mean +/- std over
+  >= 5 seeds.
+- **Reference results** (single seed 42, epsilon = 8, 150 rounds):
+  - Validation: F1 = 0.8117, MCC = 0.7892, AUC = 0.9096, PR-AUC = 0.8599.
+  - Test: F1 = 0.7138, MCC = 0.6927, AUC = 0.8206, PR-AUC = 0.7589.
+  - Test (unseen senders only): F1 = 0.7054, MCC = 0.6864, AUC = 0.8181.
+- **Synthetic baseline** is not representative of real performance; only use it
+  for smoke tests.
+
+---
+
+## 11. Ablations and recommended experiments
+
+| Ablation | Command | Purpose |
+|---|---|---|
+| Ladder step 1 (centralized) | `--mode none --epsilon inf --centralized_epochs 20` | Upper bound without federation |
+| Non-private ablation | `--mode topology --epsilon inf` | Isolate DP cost |
+| Feature ablation | `--intas_features {gnn7,gnn7_edge,edge_rel_kin}` | Contribution of extra features |
+| Rounds ablation | `--rounds {60,100,150}` | Learning curve |
+| Epsilon ablation | `--epsilon {4,8,12,16}` | Privacy-utility tradeoff |
+| Identity ablation | `--report_unseen_test` | Generalization to unseen vehicles |
+| Bootstrap ablation | `--no_bootstrap` | Effect of cold-start prior (synthetic only) |
+
+**Recommended table for the paper:**
+
+- Synthetic: sanity check (not for results).
+- InTAS `uniform` epsilon = 8, 150 rounds: main result.
+- InTAS `uniform` epsilon = 8, unseen-only: identity ablation.
+- InTAS `none` 150 rounds: non-private upper bound.
+- InTAS `topology` 150 rounds: non-private topology ablation (if you report
+  topology clipping as a design choice, report it as an ablation and clearly say
+  it is **not** certified DP).
+
+---
+
+## 12. Troubleshooting
+
+### `ImportError: cannot import name 'load_dataset' from 'spliteDataset'`
+
+You did not place `spliteDataset.py` next to the main script, or the InTAS zip
+is missing. Expected path:
+
+```
+dataset/InTAS_highway_2_constantPositionOffset.zip
+```
+
+### `RuntimeError: No valid InTAS records found for ...`
+
+The dataset archive is corrupted, or the JSON schema does not match. Check that
+each record contains `attacker`, `sender`, `receiver`, `sendTime`, `rcvTime`.
+
+### `ValueError: Finite-epsilon accounting is currently supported only for --mode uniform`
+
+You asked for `--epsilon 8 --mode topology` (or `privatized`). These are
+**not certified**. Use `--epsilon inf` for non-private ablations, or
+`--mode uniform` for the certified path.
+
+### `RuntimeError: Could not calibrate sigma for this target epsilon`
+
+The target epsilon is too small to reach with the integer-order RDP bound at the
+given `q` and `rounds`. Increase epsilon, increase `rounds`, or decrease
+`clients_per_round`.
+
+### Training looks random for many rounds
+
+Expected under strong DP (noise ~ 130x the signal). It becomes stable after
+~40-60 rounds. If it does not improve after 100 rounds, check:
+- `--lr` too small (try 0.2-0.3).
+- `--cmax` too small (larger `cmax` reduces the effective noise on the signal,
+  but requires larger `epsilon` for the same sigma).
+- Feature mode `gnn7` may be less informative than `edge_rel_kin`.
+
+### `MaskedArray` or NaN in `gnn7_edge` / `edge_rel_kin`
+
+The receiver's `distance_to_road_edge` is unknown; we fill it with NaN and
+replace with 0 after z-scoring. Verify that `INTAS_CLIP = 5.0` is not clipping
+too aggressively.
+
+---
+
+## 13. Citation
+
+If you use this code, please cite:
+
+```bibtex
+@article{<key>,
+  title   = {TOPTrust: Topology-Aware Differentially Private Federated Learning
+             for Misbehavior Detection in VANETs},
+  author  = {<authors>},
+  journal = {<journal / conference>},
+  year    = {<year>},
+}
+```
+
+---
+
+## 14. License
+
+This project is licensed under the **MIT License**. See [LICENSE](LICENSE).
+
+The **datasets** are licensed separately by their original authors:
+
+- **InTAS** - follow the license distributed with the dataset.
+- **VeReMi Extension** - follow the license distributed with the dataset.
+
+Neither dataset is bundled with this repository.
+```
+
+---
+
+## روش ذخیره در ترمینال
+
+اگر می‌خواهید مستقیماً از ترمینال ذخیره کنید، دستور زیر را اجرا کنید (کل بلوک بالا را از `# TOPTrust` تا `Neither dataset is bundled with this repository.` در یک فایل موقت بگذارید و مسیر آن را جایگزین `<path-to-temp-file>` کنید):
+
+```bash
+cat <path-to-temp-file> > ~/PycharmProjects/TopTrust/README.md
+wc -l ~/PycharmProjects/TopTrust/README.md
+head -1 ~/PycharmProjects/TopTrust/README.md
+tail -1 ~/PycharmProjects/TopTrust/README.md
+```
+
+انتظار:
+- `wc -l`: حدود ۳۹۰ خط
+- `head -1`: `# TOPTrust: Topology-Aware Differentially Private Federated Learning for Misbehavior Detection in VANETs`
+- `tail -1`: `Neither dataset is bundled with this repository.`
+
+## جایگزینی‌های لازم قبل از انتشار
+
+| Placeholder | جایگزین با |
+|---|---|
+| `<your-org>` (در بخش Clone) | نام کاربری یا سازمان GitHub شما |
+| `<key>` (در Citation) | کلید bibtex مقاله |
+| `<authors>` | نام نویسندگان |
+| `<journal / conference>` | نام ژورنال یا کنفرانس |
+| `<year>` | سال انتشار |
+
+اگر فایل `LICENSE` (متن MIT) را هم می‌خواهید، بگویید تا نسخه‌ی کامل آن را بدهم.
